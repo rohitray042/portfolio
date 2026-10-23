@@ -110,7 +110,9 @@ const observer = new IntersectionObserver(
 document
   .querySelectorAll("main section[id]")
   .forEach((section) => observer.observe(section));
-import("./animation.js").then(({ initAnimation }) => initAnimation());
+import(
+  `./animation.js?v=${new URL(import.meta.url).searchParams.get("v") || "local"}`
+).then(({ initAnimation }) => initAnimation());
 
 // Progressive enhancement: content remains visible if motion is unavailable.
 let motionPaused = matchMedia("(prefers-reduced-motion: reduce)").matches;
