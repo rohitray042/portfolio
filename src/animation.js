@@ -13,10 +13,17 @@ export function initAnimation() {
   let paused = reduce.matches,
     elapsed = 0,
     previous = 0;
+  try {
+    paused =
+      reduce.matches ||
+      localStorage.getItem("portfolio-reduce-motion") === "true";
+  } catch {
+    /* Storage is optional. */
+  }
   const pointer = { x: 0, y: 0, targetX: 0, targetY: 0 };
   const hero = document.querySelector(".hero");
   const animated = document.querySelectorAll(
-    ".case-visual, .ai-grid, .pipeline-track, .contact, .hero",
+    ".case-visual, .ai-grid, .pipeline-track, .infrastructure-scene, .contact, .hero",
   );
   const visibility = new IntersectionObserver((entries) => {
     for (const entry of entries)
@@ -109,7 +116,7 @@ export function initAnimation() {
     for (let row = 0; row <= rows; row++)
       for (let col = 0; col < columns; col++) {
         const p = grid[row][col];
-        const alpha = p.depth < 0 ? 0.42 : 0.1;
+        const alpha = p.depth < 0 ? 0.17 : 0.045;
         ctx.strokeStyle = `rgba(157,150,255,${alpha})`;
         ctx.lineWidth = p.depth < 0 ? 0.8 : 0.5;
         ctx.beginPath();
@@ -121,12 +128,75 @@ export function initAnimation() {
         }
         ctx.stroke();
         if ((row + col) % 3 === 0 && p.depth < 0.2) {
-          ctx.fillStyle = `rgba(211,219,255,${p.depth < 0 ? 0.85 : 0.2})`;
+          ctx.fillStyle = `rgba(211,219,255,${p.depth < 0 ? 0.45 : 0.12})`;
           ctx.beginPath();
           ctx.arc(p.x, p.y, p.scale * 1.05, 0, Math.PI * 2);
           ctx.fill();
         }
       }
+    // Translucent cube faces are depth-sorted before drawing their edge reflections.
+    const size = 0.39;
+    const vertices = [
+      [-1, -1, -1],
+      [1, -1, -1],
+      [1, 1, -1],
+      [-1, 1, -1],
+      [-1, -1, 1],
+      [1, -1, 1],
+      [1, 1, 1],
+      [-1, 1, 1],
+    ].map(([x, y, z]) =>
+      project(
+        x * size,
+        y * size + Math.sin(elapsed * 0.0008) * 0.025,
+        z * size,
+        rotation * 0.65 + 0.6,
+        radius,
+        cx,
+        cy,
+      ),
+    );
+    const faces = [
+      [0, 1, 2, 3],
+      [4, 5, 6, 7],
+      [0, 4, 7, 3],
+      [1, 5, 6, 2],
+      [0, 1, 5, 4],
+      [3, 2, 6, 7],
+    ];
+    faces.sort(
+      (a, b) =>
+        b.reduce((v, i) => v + vertices[i].depth, 0) -
+        a.reduce((v, i) => v + vertices[i].depth, 0),
+    );
+    for (const face of faces) {
+      const points = face.map((i) => vertices[i]);
+      const fill = ctx.createLinearGradient(
+        points[0].x,
+        points[0].y,
+        points[2].x,
+        points[2].y,
+      );
+      fill.addColorStop(0, "#c2b6ff40");
+      fill.addColorStop(0.45, "#8477d51b");
+      fill.addColorStop(1, "#25294570");
+      ctx.beginPath();
+      points.forEach((p, i) =>
+        i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y),
+      );
+      ctx.closePath();
+      ctx.fillStyle = fill;
+      ctx.fill();
+      ctx.strokeStyle = "#cfc4ff8a";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.shadowColor = "#b8a8ff";
+    ctx.shadowBlur = 20;
+    const core = project(0, 0, 0, rotation, radius, cx, cy);
+    ctx.fillStyle = "#eee9ff";
+    ctx.fillRect(core.x - 3, core.y - 3, 6, 6);
+    ctx.shadowBlur = 0;
     // Slow background star drift and inbound data streaks.
     for (let i = 0; i < (mobile ? 25 : 65); i++) {
       const x = (i * 173.91 + elapsed * 0.004) % width;
@@ -171,7 +241,7 @@ export function initAnimation() {
     cancelAnimationFrame(frame);
     frame = 0;
     previous = 0;
-    button.textContent = paused ? "Enable motion" : "Pause motion";
+    button.textContent = paused ? "Restore motion" : "Reduce motion";
     button.setAttribute("aria-pressed", String(paused));
     document.documentElement.classList.toggle("motion-paused", paused);
     document.dispatchEvent(
@@ -192,6 +262,11 @@ export function initAnimation() {
   });
   button.addEventListener("click", () => {
     paused = !paused;
+    try {
+      localStorage.setItem("portfolio-reduce-motion", String(paused));
+    } catch {
+      /* Storage is optional. */
+    }
     sync();
   });
   reduce.addEventListener("change", () => {

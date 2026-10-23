@@ -37,6 +37,31 @@ let selected = -1;
 function selectStage(index) {
   if (index === selected) return;
   selected = index;
+  const scene = document.querySelector(".infrastructure-scene");
+  if (scene.scrollWidth > scene.clientWidth) {
+    scene.scrollTo({
+      left:
+        ((88 + index * 152) / 1100) * scene.scrollWidth - scene.clientWidth / 2,
+      behavior: "instant",
+    });
+  }
+  document.querySelectorAll("[data-object]").forEach((object, i) => {
+    object.classList.toggle("active", i === index);
+    object.classList.toggle("complete", i < index);
+  });
+  document
+    .querySelectorAll("[data-link]")
+    .forEach((link, i) => link.classList.toggle("energized", i < index));
+  const samples = [
+    '{ "source": "event", "value": "42" }',
+    '{ "batch": "demo-01", "received": true }',
+    '{ "partition": 2, "value": 42 }',
+    '{ "value": 42, "valid": true }',
+    '{ "table": "curated_events", "ready": true }',
+    '{ "quality": "checked", "review": false }',
+    '{ "metric": "event_value", "result": 42 }',
+  ];
+  document.querySelector("#sample-record").textContent = samples[index];
   stages.forEach((button, i) => {
     button.classList.toggle("active", i === index);
     button.classList.toggle("complete", i < index);
